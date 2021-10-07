@@ -1,0 +1,77 @@
+version: "3.4"
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+
+services:
+
+  nginx_x:
+    container_name: nginx_x
+    build: ./services/nginx
+    restart: always
+    ports:
+      - 81:81
+    depends_on:
+      - functions
+
+  functions:
+    container_name: functions
+    build:
+      context: ./services/functions
+      dockerfile: Dockerfile-dev
+    volumes:
+      - "./services/functions:/usr/src/app"
+    expose:
+      - '5000'
+    environment:
+        - FLASK_DEBUG=1
+        - APP_SETTINGS=project.config.DevelopmentConfig
+
+  redis:
+    container_name: redis
+    image: redis:latest
+    expose: 
+        - "6379"
+    volumes:
+        - ./services/redis/redis.conf:/redis.conf
+    command: [ "redis-server", "/redis.conf" ]
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./services/prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    expose:
+      - 9090
+    ports:
+      - 9090:9090
+  stastd:
+    image: prom/statsd-exporter
+    container_name: statsd
+    expose:
+      - 9125
+      - 9102
+
+  # grafana:
+  #   image: grafana/grafana
+  #   depends_on:
+  #     - prometheus
+  #   ports:
+  #     - 3000:3000
+  #   volumes:
+  #     - ./services/grafana/datasource.yml:/etc/grafana/provisioning/datasource.yml
+  #     - ./services/grafana/dashboard.yml:/etc/grafana/provisioning/dashboards/default.yml
+  #     - ./services/grafana/dashboards:/var/lib/grafana/dashboards
+  #     - grafana_data:/grafana
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=klarna
+  #     - GF_USERS_ALLOW_SIGN_UP=false     
+        
+
+
+
+
